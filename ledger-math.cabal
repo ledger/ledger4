@@ -1,4 +1,4 @@
-Name:                Ledger
+Name:                Ledger Math Library
 Version:             4.0.0
 Synopsis:            TBD
 Description:         TBD
@@ -12,7 +12,7 @@ Category:            FFI
 
 Source-repository head
   type: git
-  location: git://github.com/ledger/ledger4.git
+  location: git://github.com/ledger/ledger-math.git
 
 test-suite doctests
   default-language: Haskell98
@@ -46,3 +46,4 @@ Library
     Ledger
     Ledger.Amount
     Ledger.Commodity
+    Ledger.Utils
