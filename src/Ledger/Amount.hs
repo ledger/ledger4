@@ -25,3 +25,5 @@ instance Ord Amount where
 
 zero :: Amount
 zero = Amount Nothing 0 0
+
+-- Amount.hs ends here

@@ -12,3 +12,5 @@ commoditiesMatch x y
   | otherwise =
     error $ "Commodities do not match: "
          ++ unpack (fromJust x) ++ " != " ++ unpack (fromJust y)
+
+-- Commodity.hs ends here
