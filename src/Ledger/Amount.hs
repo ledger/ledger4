@@ -30,7 +30,7 @@ instance Num Amount where
   Amount xq xc xp * Amount yq _ yp = Amount (xq * yq) xc (liftA2 (+) xp yp)
 
 instance Fractional Amount where
-  fromRational x = Amount (fromRational x) 0 (Just extendByDigits)
+  fromRational x = basic (fromRational x)
 
   Amount xq xc xp / Amount yq _ yp =
     Amount (xq * yq) xc (liftA2 (+) (liftA2 (+) xp yp) (Just extendByDigits))
