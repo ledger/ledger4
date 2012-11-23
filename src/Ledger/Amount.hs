@@ -22,7 +22,7 @@ instance Num Amount where
   abs    = overAmount abs
   signum = overAmount signum
 
-  fromInteger x = Amount (fromInteger x) 0 (Just extendByDigits)
+  fromInteger x = basic (fromInteger x)
 
   x@(Amount xq xc xp) + y@(Amount yq _ yp) =
     ifCommoditiesMatch "+" x y $ Amount (xq + yq) xc (liftA2 max xp yp)
@@ -38,9 +38,12 @@ instance Fractional Amount where
 overAmount :: (Ratio Integer -> Ratio Integer) -> Amount -> Amount
 overAmount f x = x { amtQuantity = f (amtQuantity x) }
 
+basic :: Ratio Integer -> Amount
+basic x = Amount { amtQuantity      = x
+                 , amtCommodity     = 0
+                 , amtPrecision     = Just extendByDigits }
+
 zero :: Amount
-zero = Amount { amtQuantity      = 0
-              , amtCommodity     = 0
-              , amtPrecision     = Just extendByDigits }
+zero = basic 0
 
 -- Amount.hs ends here
