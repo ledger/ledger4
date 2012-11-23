@@ -5,7 +5,7 @@ import Data.Text
 
 data Commodity = Commodity { cmdtyName      :: Text
                            , cmdtyPrecision :: Int }
-                 deriving (Show, Read, Eq)
+               deriving (Show, Read, Eq)
 
 data Amount = Amount { amtQuantity      :: Ratio Integer
                      , amtCommodity     :: Int
