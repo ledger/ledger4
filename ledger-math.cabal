@@ -1,4 +1,4 @@
-Name:                Ledger Math Library
+Name:                ledger-math
 Version:             4.0.0
 Synopsis:            TBD
 Description:         TBD
@@ -28,7 +28,7 @@ test-suite doctests
 
 Library
   default-language: Haskell98
-  ghc-options: -threaded
+  ghc-options: -Wall -fno-warn-orphans -threaded
   hs-source-dirs: src
   build-depends:
       base            >= 3 && < 5
@@ -46,4 +46,6 @@ Library
     Ledger
     Ledger.Amount
     Ledger.Commodity
+    Ledger.Errors
     Ledger.Utils
+    Ledger.Types

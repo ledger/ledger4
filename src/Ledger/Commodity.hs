@@ -1,16 +1,13 @@
 module Ledger.Commodity where
 
-import Data.Maybe
+import Control.Exception
 import Data.Text
-import Ledger.Utils
+import Ledger.Errors
+import Ledger.Types
 
-type Commodity = Text
-
-commoditiesMatch :: Maybe Text -> Maybe Text -> Bool
-commoditiesMatch x y
-  | maybeEqual x y = True
-  | otherwise =
-    error $ "Commodities do not match: "
-         ++ unpack (fromJust x) ++ " != " ++ unpack (fromJust y)
+ifCommoditiesMatch :: Text -> Amount -> Amount -> a -> a
+ifCommoditiesMatch op x@(Amount _ xc _) y@(Amount _ yc _) z
+  | xc == 0 || yc == 0 || xc == yc = z
+  | otherwise = throw (CommodityMismatch op x y)
 
 -- Commodity.hs ends here

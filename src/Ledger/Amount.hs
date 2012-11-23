@@ -1,29 +1,45 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Ledger.Amount where
 
-import Control.Exception.Base
+import Control.Applicative
 import Data.Ratio
 import Ledger.Commodity
+import Ledger.Types
 
-data Amount = Amount { amtCommodity :: Maybe Commodity
-                     , amtQuantity  :: Ratio Integer
-                     , amtPrecision :: Int }
-              deriving (Eq, Read, Show)
-
-instance Num Amount where
-  Amount xc xq _ + Amount yc yq _ =
-    assert (commoditiesMatch xc yc) (Amount xc (xq + yq) 0)
-
-  Amount xc xq _ * Amount _ yq _ = Amount xc (xq * yq) 0
-
-  abs (Amount xc xq _)    = Amount xc (abs xq) 0
-  signum (Amount xc xq _) = Amount xc (signum xq) 0
-  fromInteger x           = Amount Nothing (fromInteger x) 0
+extendByDigits :: Int
+extendByDigits = 6
 
 instance Ord Amount where
-  Amount xc xq _ <= Amount yc yq _ =
-    assert (commoditiesMatch xc yc) (xq <= yq)
+  x@(Amount xq _ _) <= y@(Amount yq _ _) =
+    ifCommoditiesMatch "<=" x y (xq <= yq)
+
+instance Real Amount where
+  toRational = amtQuantity
+
+instance Num Amount where
+  abs    = overAmount abs
+  signum = overAmount signum
+
+  fromInteger x = Amount (fromInteger x) 0 (Just extendByDigits)
+
+  x@(Amount xq xc xp) + y@(Amount yq _ yp) =
+    ifCommoditiesMatch "+" x y $ Amount (xq + yq) xc (liftA2 max xp yp)
+
+  Amount xq xc xp * Amount yq _ yp = Amount (xq * yq) xc (liftA2 (+) xp yp)
+
+instance Fractional Amount where
+  fromRational x = Amount (fromRational x) 0 (Just extendByDigits)
+
+  Amount xq xc xp / Amount yq _ yp =
+    Amount (xq * yq) xc (liftA2 (+) (liftA2 (+) xp yp) (Just extendByDigits))
+
+overAmount :: (Ratio Integer -> Ratio Integer) -> Amount -> Amount
+overAmount f x = x { amtQuantity = f (amtQuantity x) }
 
 zero :: Amount
-zero = Amount Nothing 0 0
+zero = Amount { amtQuantity      = 0
+              , amtCommodity     = 0
+              , amtPrecision     = Just extendByDigits }
 
 -- Amount.hs ends here
