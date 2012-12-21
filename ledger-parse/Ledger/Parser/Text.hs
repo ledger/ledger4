@@ -19,7 +19,7 @@ import Data.Text as T hiding (zipWith)
 import Data.Text.Encoding as E
 import Debug.Trace (trace)
 import Filesystem.Path.CurrentOS
-import Prelude hiding (FilePath, readFile)
+import Prelude hiding (FilePath, readFile, until)
 import Text.Parser.Combinators
 import Text.Parser.Token
 import Text.Trifecta
@@ -57,8 +57,6 @@ instance Show RawEntityInSitu where
 data RawPosting = RawPosting { rawPostState           :: Maybe Char
                              , rawPostAccount         :: Text
                              , rawPostAmount          :: Maybe Text
-                             , rawPostCost            :: Maybe (Text,Text)
-                             , rawPostAssignedBalance :: Maybe Text
                              , rawPostNote            :: Maybe Text }
                 | RawPostingNote Text
                 deriving (Show, Eq)
@@ -90,57 +88,38 @@ longSep = (string "  " *> pure ())
           <|> (char ' ' *> tab *> pure ())
           <?> "long separator"
 
-nonNL :: CharParsing m => m Text
-nonNL = pack <$> many (noneOf "\r\n")
-             <?> "non-newline"
-
 noteParser :: CharParsing m => m Text
 noteParser = pack <$> (char ';' *> manyTill anyChar (try (lookAhead endOfLine)))
                   <?> "note"
 
-untilLongSepOrEOL :: CharParsing m => m Text
-untilLongSepOrEOL =
-  pack <$> ((:) <$> noneOf "\r\n"
-                <*> manyTill anyChar (try (lookAhead (longSep <|> endOfLine))))
-       <?> "text before long-separator"
+longSepOrEOL :: CharParsing m => m ()
+longSepOrEOL = try (lookAhead (longSep <|> endOfLine))
 
-untilLongSepOrEOLOr :: CharParsing m => m p -> m Text
-untilLongSepOrEOLOr p = pack <$> ((:) <$> noneOf "\r\n"
-                                      <*> manyTill anyChar end)
-                             <?> "text before long-separator"
-  where end = try (lookAhead (longSep <|> endOfLine <|> (p *> pure ())))
+longSepOrEOLIf :: CharParsing m => m p -> m ()
+longSepOrEOLIf p = try (lookAhead ((longSep *> p *> pure ()) <|> endOfLine))
+
+until :: CharParsing m => m () -> m Text
+until end = pack <$> ((:) <$> noneOf "\r\n" <*> manyTill anyChar end)
 
 tokenP :: TokenParsing m => m p -> m p
 tokenP p = p <* skipMany spaceChars
 
 postingParser :: TokenParsing m => m RawPosting
 postingParser =
-  (RawPosting
-  <$> (some spaceChars *>
-       optional (tokenP (char '*' <|> char '!')))
-  <*> tokenP untilLongSepOrEOL
-  <*> optional (tokenP (untilLongSepOrEOLOr (some (oneOf "@="))))
-  <*> optional
-      ((,) <$> (T.filter (not . isSpace) . pack <$>
-                some (oneOf "@= "))
-           <*> tokenP (untilLongSepOrEOLOr (char '=')))
-  <*> optional (char '=' *> untilLongSepOrEOL)
-  <*> (optional (longSep *> noteParser) <* endOfLine)
-  <?> "posting")
-
+  (RawPosting <$> (some spaceChars *>
+                   optional (tokenP (char '*' <|> char '!')))
+              <*> tokenP (until longSepOrEOL)
+              <*> optional (tokenP (until longSepOrEOL))
+              <*> (optional (noteParser) <* endOfLine)
+              <?> "posting")
   <|>
-
-  (RawPostingNote
-  <$> (T.concat <$>
-       some (T.append <$> (some spaceChars *> noteParser)
-                      <*> endOfLineText))
-  <?> "posting note")
+  (RawPostingNote <$> (T.concat <$>
+                       some (T.append <$> (some spaceChars *> noteParser)
+                                      <*> endOfLineText))
+                  <?> "posting note")
 
 spaceChars :: CharParsing m => m ()
 spaceChars = oneOf " \t" *> pure ()
-
-anySpaceChars :: CharParsing m => m ()
-anySpaceChars = oneOf " \t\r\n" *> pure ()
 
 regularTxnParser :: TokenParsing m => m RawEntity
 regularTxnParser = RawTransactionEntity <$> go
@@ -149,8 +128,9 @@ regularTxnParser = RawTransactionEntity <$> go
              <*> optional (char '=' *> txnDateParser)
              <*> (many spaceChars *>
                   optional (tokenP (char '*' <|> char '!')))
-             <*> optional (tokenP (parens nonNL))
-             <*> tokenP untilLongSepOrEOL
+             <*> optional
+                 (tokenP (parens (pack <$> many (noneOf ")\r\n"))))
+             <*> tokenP (until (longSepOrEOLIf (char ';')))
              <*> optional noteParser
              <*> (endOfLine *> some postingParser)
              <?> "regular transaction"
@@ -214,9 +194,12 @@ entityParser = directiveParser
                <|> transactionParser
                <?> "journal"
 
+rendCaret :: DeltaParsing m => m Rendering
+rendCaret = addCaret <$> position <*> rend
+
 journalParser :: DeltaParsing m => m [RawEntityInSitu]
 journalParser =
-  many (RawEntityInSitu <$> pure 0 <*> rend <*> entityParser <*> rend)
+  many (RawEntityInSitu <$> pure 0 <*> rendCaret <*> entityParser <*> rendCaret)
 
 parseJournalFile :: FilePath -> ByteString -> Result [RawEntityInSitu]
 parseJournalFile file contents =
