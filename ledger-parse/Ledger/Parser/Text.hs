@@ -9,25 +9,23 @@ module Ledger.Parser.Text
        , RawTransaction(..)
        , RawAutoTxn(..)
        , RawPeriodTxn(..)
-       , main
+       -- , main
        ) where
 
 import           Control.Applicative
 import           Data.ByteString as B hiding (pack, unpack, singleton,
                                               zipWith, concat)
 import           Data.Maybe
-import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
-import           Debug.Trace (trace)
 import           Filesystem.Path.CurrentOS hiding (concat)
 import           Prelude hiding (FilePath, readFile, until)
 import           Text.Parser.Combinators
 import           Text.Parser.Token
 import           Text.Trifecta
 import           Text.Trifecta.Delta
-import Control.DeepSeq
-import Criterion
-import Criterion.Main
+-- import Control.DeepSeq
+-- import Criterion
+-- import Criterion.Main
 
 infixl 4 <$!>
 
@@ -204,17 +202,17 @@ parseJournalFile file contents =
        <$> parseByteString journalParser start contents
        <*> pure [1..]
 
-testme :: IO (Result [RawEntityInSitu])
-testme =
-  let file = "/Users/johnw/Documents/Finances/ledger.dat"
-  in parseJournalFile (fromText (T.pack file)) <$> B.readFile file
+-- testme :: IO (Result [RawEntityInSitu])
+-- testme =
+--   let file = "/Users/johnw/Documents/Finances/ledger.dat"
+--   in parseJournalFile (fromText (T.pack file)) <$> B.readFile file
 
-instance NFData RawEntityInSitu
-instance NFData (Result a)
+-- instance NFData RawEntityInSitu
+-- instance NFData (Result a)
 
-main = do let file = "/Users/johnw/Documents/Finances/ledger.dat"
-          bs <- B.readFile file
-          defaultMain [
-            bench "main" $ nf (parseJournalFile (fromText (T.pack file))) bs ]
+-- main = do let file = "/Users/johnw/Documents/Finances/ledger.dat"
+--           bs <- B.readFile file
+--           defaultMain [
+--             bench "main" $ nf (parseJournalFile (fromText (T.pack file))) bs ]
 
 -- Text.hs ends here
