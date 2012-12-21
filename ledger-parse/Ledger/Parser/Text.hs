@@ -9,11 +9,11 @@ module Ledger.Parser.Text
        , RawTransaction(..)
        , RawAutoTxn(..)
        , RawPeriodTxn(..)
+       , main
        ) where
 
 import Control.Applicative
 import Data.ByteString as B hiding (pack, unpack, singleton, zipWith)
-import Data.Char (isSpace)
 import Data.Maybe
 import Data.Text as T hiding (zipWith)
 import Data.Text.Encoding as E
@@ -27,10 +27,8 @@ import Text.Trifecta.Delta
 
 infixl 4 <$!>
 
-(<$!>) :: Monad m => (a -> b) -> m a -> m b
-f <$!> ma = do
-  a <- ma
-  return $! f a
+(<$!>) :: TokenParsing m => (a -> b) -> m a -> m b
+f <$!> ma = ($!) <$> pure f <*> ma
 
 data RawJournal = RawJournal [RawEntity]
                 deriving (Show, Eq)
@@ -79,7 +77,7 @@ data RawPeriodTxn = RawPeriodTxn { rawPTxnPeriod :: Text
                   deriving (Show, Eq)
 
 txnDateParser :: TokenParsing m => m Text
-txnDateParser = pack <$> some (digit <|> oneOf "/-." <|> letter)
+txnDateParser = pack <$!> some (digit <|> oneOf "/-." <|> letter)
                      <?> "transaction date"
 
 longSep :: CharParsing m => m ()
@@ -106,15 +104,15 @@ tokenP p = p <* skipMany spaceChars
 
 postingParser :: TokenParsing m => m RawPosting
 postingParser =
-  (RawPosting <$> (some spaceChars *>
+  (RawPosting <$!> (some spaceChars *>
                    optional (tokenP (char '*' <|> char '!')))
               <*> tokenP (until longSepOrEOL)
               <*> optional (tokenP (until longSepOrEOL))
               <*> (optional (noteParser) <* endOfLine)
               <?> "posting")
   <|>
-  (RawPostingNote <$> (T.concat <$>
-                       some (T.append <$> (some spaceChars *> noteParser)
+  (RawPostingNote <$!> (T.concat <$!>
+                       some (T.append <$!> (some spaceChars *> noteParser)
                                       <*> endOfLineText))
                   <?> "posting note")
 
@@ -122,32 +120,32 @@ spaceChars :: CharParsing m => m ()
 spaceChars = oneOf " \t" *> pure ()
 
 regularTxnParser :: TokenParsing m => m RawEntity
-regularTxnParser = RawTransactionEntity <$> go
+regularTxnParser = RawTransactionEntity <$!> go
   where go = RawTransaction
-             <$> txnDateParser
+             <$!> txnDateParser
              <*> optional (char '=' *> txnDateParser)
              <*> (many spaceChars *>
                   optional (tokenP (char '*' <|> char '!')))
              <*> optional
-                 (tokenP (parens (pack <$> many (noneOf ")\r\n"))))
+                 (tokenP (parens (pack <$!> many (noneOf ")\r\n"))))
              <*> tokenP (until (longSepOrEOLIf (char ';')))
              <*> optional noteParser
              <*> (endOfLine *> some postingParser)
              <?> "regular transaction"
 
 automatedTxnParser :: TokenParsing m => m RawEntity
-automatedTxnParser = RawAutoTxnEntity <$> go
+automatedTxnParser = RawAutoTxnEntity <$!> go
   where go = RawAutoTxn
-             <$> (tokenP (char '=') *>
-                  (pack <$> manyTill anyChar (try (lookAhead endOfLine))))
+             <$!> (tokenP (char '=') *>
+                  (pack <$!> manyTill anyChar (try (lookAhead endOfLine))))
              <*> (endOfLine *> some postingParser)
              <?> "automated transaction"
 
 periodicTxnParser :: TokenParsing m => m RawEntity
-periodicTxnParser = RawPeriodTxnEntity <$> go
+periodicTxnParser = RawPeriodTxnEntity <$!> go
   where go = RawPeriodTxn
-             <$> (tokenP (char '~') *>
-                  (pack <$> manyTill anyChar (try (lookAhead endOfLine))))
+             <$!> (tokenP (char '~') *>
+                  (pack <$!> manyTill anyChar (try (lookAhead endOfLine))))
              <*> (endOfLine *> some postingParser)
              <?> "periodic transaction"
 
@@ -159,19 +157,17 @@ transactionParser = regularTxnParser
 
 directiveParser :: TokenParsing m => m RawEntity
 directiveParser =
-  Directive <$> optional (oneOf "@!")
-            <*> (pack <$> ((:) <$> letter <*> tokenP (many alphaNum)))
+  Directive <$!> optional (oneOf "@!")
+            <*> (pack <$!> ((:) <$!> letter <*> tokenP (many alphaNum)))
             <*> (optional
-                 (pack <$>
-                  ((:) <$> noneOf "\r\n"
+                 (pack <$!>
+                  ((:) <$!> noneOf "\r\n"
                        <*> manyTill anyChar (try (lookAhead endOfLine))))
                  <* endOfLine)
             <?> "directive"
 
 endOfLine :: CharParsing m => m ()
-endOfLine = (string "\r\n" *> pure ())
-            <|> (char '\n' *> pure ())
-            <?> "end of line"
+endOfLine = skipOptional (char '\r') *> char '\n' *> pure ()
 
 endOfLineText :: CharParsing m => m Text
 endOfLineText = (pack <$> string "\r\n")
@@ -180,12 +176,12 @@ endOfLineText = (pack <$> string "\r\n")
 
 commentParser :: TokenParsing m => m RawEntity
 commentParser = FileComment
-                <$> (T.concat <$>
-                     some (T.append <$> noteParser <*> endOfLineText))
+                <$!> (T.concat <$!>
+                     some (T.append <$!> noteParser <*> endOfLineText))
                 <?> "comment"
 
 whitespaceParser :: TokenParsing m => m RawEntity
-whitespaceParser = Whitespace . pack <$> some space <?> "whitespace"
+whitespaceParser = Whitespace . pack <$!> some space <?> "whitespace"
 
 entityParser :: TokenParsing m => m RawEntity
 entityParser = directiveParser
@@ -195,11 +191,11 @@ entityParser = directiveParser
                <?> "journal"
 
 rendCaret :: DeltaParsing m => m Rendering
-rendCaret = addCaret <$> position <*> rend
+rendCaret = addCaret <$!> position <*> rend
 
 journalParser :: DeltaParsing m => m [RawEntityInSitu]
 journalParser =
-  many (RawEntityInSitu <$> pure 0 <*> rendCaret <*> entityParser <*> rendCaret)
+  many (RawEntityInSitu <$!> pure 0 <*> rendCaret <*> entityParser <*> rendCaret)
 
 parseJournalFile :: FilePath -> ByteString -> Result [RawEntityInSitu]
 parseJournalFile file contents =
@@ -213,5 +209,9 @@ testme :: IO (Result [RawEntityInSitu])
 testme =
   let file = "/Users/johnw/Documents/Finances/ledger.dat"
   in parseJournalFile (fromText (pack file)) <$> B.readFile file
+
+main = do x <- testme
+          case x of
+            Success x -> print $ Prelude.take 10 x
 
 -- Text.hs ends here
