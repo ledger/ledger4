@@ -1,0 +1,3 @@
+[submodule "vendor/trifecta"]
+	path = vendor/trifecta
+	url = git://github.com/ekmett/trifecta.git
