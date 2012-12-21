@@ -40,7 +40,7 @@ data RawJournal = RawJournal [RawEntity]
 data RawEntity = Whitespace String
                | FileComment String
                | Directive { directiveChar :: Maybe Char
-                           , directiveName :: String
+                           , directiveName :: !String
                            , directiveArg  :: Maybe String }
                | RawTransactionEntity RawTransaction
                | RawAutoTxnEntity RawAutoTxn
@@ -48,36 +48,36 @@ data RawEntity = Whitespace String
                | EndOfFile
                deriving (Show, Eq)
 
-data RawEntityInSitu = RawEntityInSitu { rawEntityIndex    :: Int
-                                       , rawEntityStartPos :: Rendering
-                                       , rawEntity         :: RawEntity
-                                       , rawEntityEndPos   :: Rendering }
+data RawEntityInSitu = RawEntityInSitu { rawEntityIndex    :: !Int
+                                       , rawEntityStartPos :: !Rendering
+                                       , rawEntity         :: !RawEntity
+                                       , rawEntityEndPos   :: !Rendering }
 
 instance Show RawEntityInSitu where
   show x = show (rawEntity x) ++ "\n"
 
-data RawPosting = RawPosting { rawPostState           :: Maybe Char
-                             , rawPostAccount         :: String
-                             , rawPostAmount          :: Maybe String
-                             , rawPostNote            :: Maybe String }
-                | RawPostingNote String
+data RawPosting = RawPosting { rawPostState   :: Maybe Char
+                             , rawPostAccount :: !String
+                             , rawPostAmount  :: Maybe String
+                             , rawPostNote    :: Maybe String }
+                | RawPostingNote !String
                 deriving (Show, Eq)
 
-data RawTransaction = RawTransaction { rawTxnDate    :: String
+data RawTransaction = RawTransaction { rawTxnDate    :: !String
                                      , rawTxnDateAux :: Maybe String
                                      , rawTxnState   :: Maybe Char
                                      , rawTxnCode    :: Maybe String
-                                     , rawTxnDesc    :: String
+                                     , rawTxnDesc    :: !String
                                      , rawTxnNote    :: Maybe String
-                                     , rawTxnPosts   :: [RawPosting] }
+                                     , rawTxnPosts   :: ![RawPosting] }
                     deriving (Show, Eq)
 
-data RawAutoTxn = RawAutoTxn { rawATxnQuery :: String
-                             , rawATxnPosts :: [RawPosting] }
+data RawAutoTxn = RawAutoTxn { rawATxnQuery :: !String
+                             , rawATxnPosts :: ![RawPosting] }
                 deriving (Show, Eq)
 
-data RawPeriodTxn = RawPeriodTxn { rawPTxnPeriod :: String
-                                 , rawPTxnPosts  :: [RawPosting] }
+data RawPeriodTxn = RawPeriodTxn { rawPTxnPeriod :: !String
+                                 , rawPTxnPosts  :: ![RawPosting] }
                   deriving (Show, Eq)
 
 txnDateParser :: TokenParsing m => m String
@@ -85,7 +85,7 @@ txnDateParser = some (digit <|> oneOf "/-." <|> letter)
                 <?> "transaction date"
 
 longSep :: CharParsing m => m ()
-longSep = (string "  " *> pure ()) <|> (tab *> pure ())
+longSep = () <$ (try (char ' ' *> char ' ') <|> tab)
 
 noteParser :: CharParsing m => m String
 noteParser = char ';' *> manyTill anyChar (try (lookAhead endOfLine))
@@ -95,7 +95,7 @@ longSepOrEOL :: CharParsing m => m ()
 longSepOrEOL = try (lookAhead (longSep <|> endOfLine))
 
 longSepOrEOLIf :: CharParsing m => m p -> m ()
-longSepOrEOLIf p = try (lookAhead ((longSep *> p *> pure ()) <|> endOfLine))
+longSepOrEOLIf p = try (lookAhead ((() <$ longSep <* p) <|> endOfLine))
 
 until :: CharParsing m => m () -> m String
 until end = (:) <$> noneOf "\r\n" <*> manyTill anyChar end
@@ -118,7 +118,7 @@ postingParser =
                   <?> "posting note")
 
 spaceChars :: CharParsing m => m ()
-spaceChars = oneOf " \t" *> pure ()
+spaceChars = () <$ oneOf " \t"
 
 regularTxnParser :: TokenParsing m => m RawEntity
 regularTxnParser = RawTransactionEntity <$!> go
@@ -167,7 +167,7 @@ directiveParser =
             <?> "directive"
 
 endOfLine :: CharParsing m => m ()
-endOfLine = endOfLineChar *> pure ()
+endOfLine = () <$ endOfLineChar
 
 endOfLineChar :: CharParsing m => m Char
 endOfLineChar = skipOptional (char '\r') *> char '\n'
