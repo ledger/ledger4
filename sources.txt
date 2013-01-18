@@ -1,3 +1,4 @@
 ledger-math/
 ledger-parse/
+git://github.com/ekmett/lens
 git://github.com/ekmett/trifecta
