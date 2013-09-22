@@ -24,6 +24,7 @@ import           Control.Monad.Trans.State
 import           Data.Data
 --import           Data.Foldable as Foldable hiding (toList, foldl')
 import           Data.Functor.Bind as Bind
+--import           Data.Graph.AStar
 import           Data.IntMap (IntMap, Key)
 import qualified Data.IntMap as IntMap
 import           Data.IntSet (IntSet)
@@ -178,10 +179,12 @@ findConversion :: Commodity     -- ^ Source commodity
                -> Maybe (UTCTime, Rational)
 findConversion from to time cm = go <$> intAStar g d h (== to) from
   where
-    g s = IntMap.keysSet $ IntMap.filter (isJust . Map.lookupLT time)
-                         $ conversions s
+    g = IntMap.keysSet
+        . IntMap.filter (isJust . Map.lookupLE time)
+        . conversions
 
-    d s t = let (time', _) = conv s t in diffUTCTime time time'
+    d s t = let (time', _) = conv s t
+            in diffUTCTime time time'
 
     h goal = IntMap.foldl'
         (Map.foldlWithKey' $ \diff t _ ->
@@ -190,16 +193,17 @@ findConversion from to time cm = go <$> intAStar g d h (== to) from
           else min diff (diffUTCTime time t))
         (diffUTCTime time minTime)
         (conversions goal)
-
-    minTime = UTCTime (ModifiedJulianDay 0) 0
+      where
+        minTime = UTCTime (ModifiedJulianDay 0) 0
 
     go = (\(x, y, _) -> (x, y)) . foldl' f (time, 1, from)
       where
-        f (w, r, from') c = let (time', r') = conv from' c
-                            in (min w time', r / r', c)
+        f (w, r, s) t = let (w', r') = conv s t
+                        in (min w w', r / r', t)
 
-    conv s t = let m = conversions s IntMap.! t
-               in fromMaybe (error "Not possible") $ Map.lookupLE time m
+    conv s = fromMaybe (error "findConversion: Not possible")
+        . Map.lookupLE time
+        . (conversions s IntMap.!)
 
     conversions = commConversions . (commodities cm IntMap.!)
 
