@@ -1,0 +1,82 @@
+
+src/Ledger.hs,20
+module Ledger (0,1
+
+src/Ledger/Amount.hs,219
+module Ledger.Amount where2,3
+extendByDigits ::9,10
+extendByDigits =10,11
+instance Ord12,13
+  x@(Amount xc xq _ xkp) `quotRem` Amount _ yq _ _39,40
+overAmount ::53,54
+overAmount f54,55
+zero ::56,57
+zero =57,58
+
+src/Ledger/Commodity.hs,87
+module Ledger.Commodity where0,1
+ifCommoditiesMatch ::8,9
+ifCommoditiesMatch op9,10
+
+src/Ledger/Errors.hs,301
+module Ledger.Errors where2,3
+data LedgerException =9,10
+data LedgerException = CommodityMismatch {9,10
+data LedgerException = CommodityMismatch { leCmOperator ::9,10
+                                         , leCmLeft     ::10,11
+                                         , leCmRight    ::11,12
+
+src/Ledger/Types.hs,428
+module Ledger.Types where0,1
+data Commodity =5,6
+data Commodity = Commodity {5,6
+data Commodity = Commodity { cmdtyName      ::5,6
+                           , cmdtyPrecision ::6,7
+data Amount =9,10
+data Amount = Amount {9,10
+data Amount = Amount { amtCommodity     ::9,10
+                     , amtQuantity      ::10,11
+                     , amtPrecision     ::11,12
+                     , amtKeepPrecision ::12,13
+
+src/Ledger/Utils.hs,104
+module Ledger.Utils where0,1
+maybeEqual ::2,3
+maybeEqual _3,4
+maybeEqualBy ::7,8
+maybeEqualBy _8,9
+Amount	src/Ledger/Types.hs	10
+Amount	src/Ledger/Types.hs	10
+Commodity	src/Ledger/Types.hs	6
+Commodity	src/Ledger/Types.hs	6
+CommodityMismatch	src/Ledger/Errors.hs	10
+Ledger	src/Ledger.hs	1
+Ledger.Amount	src/Ledger/Amount.hs	3
+Ledger.Commodity	src/Ledger/Commodity.hs	1
+Ledger.Errors	src/Ledger/Errors.hs	3
+Ledger.Types	src/Ledger/Types.hs	1
+Ledger.Utils	src/Ledger/Utils.hs	1
+LedgerException	src/Ledger/Errors.hs	10
+amtCommodity	src/Ledger/Types.hs	10
+amtKeepPrecision	src/Ledger/Types.hs	13
+amtPrecision	src/Ledger/Types.hs	12
+amtQuantity	src/Ledger/Types.hs	11
+cmdtyName	src/Ledger/Types.hs	6
+cmdtyPrecision	src/Ledger/Types.hs	7
+extendByDigits	src/Ledger/Amount.hs	10
+extendByDigits	src/Ledger/Amount.hs	11
+ifCommoditiesMatch	src/Ledger/Commodity.hs	9
+ifCommoditiesMatch	src/Ledger/Commodity.hs	10
+instance	src/Ledger/Amount.hs	13
+leCmLeft	src/Ledger/Errors.hs	11
+leCmOperator	src/Ledger/Errors.hs	10
+leCmRight	src/Ledger/Errors.hs	12
+maybeEqual	src/Ledger/Utils.hs	3
+maybeEqual	src/Ledger/Utils.hs	4
+maybeEqualBy	src/Ledger/Utils.hs	8
+maybeEqualBy	src/Ledger/Utils.hs	9
+overAmount	src/Ledger/Amount.hs	54
+overAmount	src/Ledger/Amount.hs	55
+quotRem	src/Ledger/Amount.hs	40
+zero	src/Ledger/Amount.hs	57
+zero	src/Ledger/Amount.hs	58

@@ -1,0 +1,49 @@
+Name:                commodities
+Version:             0.1.0.0
+Synopsis:            Library for working with commoditized amounts and price histories
+Description:         Library for working with commoditized amounts and price histories
+License-file:        LICENSE
+License:             BSD3
+Author:              John Wiegley
+Maintainer:          johnw@newartisans.com
+Build-Type:          Simple
+Cabal-Version:       >=1.10
+Category:            Finance
+
+source-repository head
+  type:              git
+  location:          git://github.com/ledger/commodities.git
+
+test-suite doctests
+  default-language:  Haskell98
+  type:              exitcode-stdio-1.0
+  main-is:           doctests.hs
+  ghc-options:       -Wall -Werror
+  hs-source-dirs:    test
+  build-depends:     base == 4.*
+                   , directory >= 1.0 && < 1.3
+                   , doctest   >= 0.8 && <= 0.10
+                   , filepath  >= 1.3 && < 1.4
+
+library
+  default-language:  Haskell98
+  ghc-options:       -Wall -fno-warn-orphans -threaded
+  exposed-modules:   Data.Commodity
+                     Data.Commodity.Amount
+                     Data.Commodity.Pool
+                     Data.Commodity.Parse
+                     Data.Commodity.Print
+                     Data.Commodity.Errors
+                     Data.Commodity.Utils
+                     Data.Commodity.Types
+  build-depends:     base                   >= 3 && < 5
+                   , comonad-transformers   >= 3.0.1
+                   , containers             >= 0.4
+                   , distributive           >= 0.3
+                   , keys                   >= 3.0.2
+                   , lens                   >= 3.7
+                   , linear                 >= 0.7
+                   , numbers                >= 2009.8.9
+                   , representable-functors >= 3.0.1
+                   , semigroupoids          >= 3.0.2
+                   , text                   >= 0.11.2
