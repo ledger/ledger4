@@ -1,10 +1,12 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Data.Commodity
        ( Commodity
@@ -181,12 +183,20 @@ findConversion from to time cm = go <$> intAStar g d h (== to) from
 
     d s t = let (time', _) = conv s t in diffUTCTime time time'
 
-    h _goal = 0                 -- is a heuristic even possible here?
+    h goal = IntMap.foldl'
+        (Map.foldlWithKey' $ \diff t _ ->
+          if t > time
+          then diff
+          else min diff (diffUTCTime time t))
+        (diffUTCTime time minTime)
+        (conversions goal)
+
+    minTime = UTCTime (ModifiedJulianDay 0) 0
 
     go = (\(x, y, _) -> (x, y)) . foldl' f (time, 1, from)
       where
         f (w, r, from') c = let (time', r') = conv from' c
-                            in (if w < time' then w else time', r / r', c)
+                            in (min w time', r / r', c)
 
     conv s t = let m = conversions s IntMap.! t
                in fromMaybe (error "Not possible") $ Map.lookupLE time m
