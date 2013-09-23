@@ -28,14 +28,8 @@ test-suite doctests
 library
   default-language:  Haskell98
   ghc-options:       -Wall -fno-warn-orphans -threaded
-  exposed-modules:   Data.Commodity
-                     Data.Commodity.Amount
-                     Data.Commodity.Pool
-                     Data.Commodity.Parse
-                     Data.Commodity.Print
-                     Data.Commodity.Errors
-                     Data.Commodity.Utils
-                     Data.Commodity.Types
+  exposed-modules:   Ledger.Balance
+                     Ledger.Commodity
   build-depends:     base                   >= 3 && < 5
                    , comonad-transformers   >= 3.0.1
                    , containers             >= 0.4
@@ -44,6 +38,9 @@ library
                    , lens                   >= 3.7
                    , linear                 >= 0.7
                    , numbers                >= 2009.8.9
+                   , PSQueue
                    , representable-functors >= 3.0.1
                    , semigroupoids          >= 3.0.2
                    , text                   >= 0.11.2
+                   , time
+                   , transformers
