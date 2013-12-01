@@ -12,6 +12,7 @@ module Ledger.Balance where
 import           Control.Applicative
 import           Control.Comonad.Trans.Store
 import           Control.Lens hiding (from, to)
+import qualified Control.Lens.Internal as Lens
 import           Control.Monad hiding (forM)
 import           Data.Data
 import           Data.Foldable as Foldable
@@ -34,12 +35,27 @@ data Balance a = Zero
                | Plain a            -- ^ An uncommoditized integer
                | Amount Commodity a -- ^ A single commoditized amount
                | Balance (IntMap a) -- ^ A vector-space over commodities
-               deriving (Show, Read, Typeable, Data)
+               deriving (Eq, Ord, Show, Read, Typeable, Data)
 
-instance Eq (Balance a)
+non' :: a -> Iso' (Maybe a) a
+non' = flip anon (const False)
 
-non' :: (Functor f, Profunctor p) => a -> p a (f a) -> p (Maybe a) (f (Maybe a))
-non' = anon ?? const False
+-- instance Num a => Num (Balance a) where
+--     x + y = x ^+^ y
+
+--     _ * Zero = Zero
+--     Zero * _ = Zero
+--     x * Plain q = x ^* q
+--     Plain q * y = y ^* q
+--     x * Amount _ q = x ^* q
+--     Amount _ q * y = y ^* q
+--     Balance _ * Balance _ = error "Cannot multiply two balances"
+
+--     x - y = x ^-^ y
+--     negate x = Zero ^-^ x
+--     abs x = abs <$> x
+--     signum = error "signum not supported on Balance values"
+--     fromInteger = Plain . fromInteger
 
 instance Additive Balance where
     zero = Zero
@@ -102,6 +118,37 @@ instance Applicative Balance where
 instance Apply Balance where
     (<.>) = (<*>)
 
+instance Bind Balance where
+    Zero >>- _    = Zero
+    Plain q >>- f = f q
+
+    Amount c q >>- f = case f q of
+        Zero    -> Zero
+        Plain _ -> Zero
+        amt@(Amount c' _)
+            | c == c'   -> amt
+            | otherwise -> Zero
+        Balance xs -> case IntMap.lookup c xs of
+            Nothing -> Zero
+            Just v  -> Amount c v
+
+    Balance xs >>- f =
+        Balance $ IntMap.foldlWithKey' go IntMap.empty xs
+      where
+        go m c a = case f a of
+            Zero    -> m
+            Plain _ -> m
+            Amount c' q'
+                | c == c'   -> IntMap.insert c q' m
+                | otherwise -> m
+            Balance xs' -> case IntMap.lookup c xs' of
+                Nothing -> m
+                Just v  -> IntMap.insert c v m
+
+instance Monad Balance where
+    return = Plain
+    (>>=)  = (>>-)
+
 type instance K.Key Balance = IntMap.Key
 
 instance K.Lookup Balance where
@@ -109,6 +156,22 @@ instance K.Lookup Balance where
     lookup _ (Plain _)    = Nothing
     lookup k (Amount c x) = if k == c then Just x else Nothing
     lookup k (Balance xs) = IntMap.lookup k xs
+
+delete :: Int -> Balance a -> Balance a
+delete _k Zero = Zero
+delete _k pl@(Plain _) = pl
+delete k amt@(Amount c _)
+    | k == c = Zero
+    | otherwise = amt
+delete k (Balance xs) = Balance (IntMap.delete k xs)
+
+insert :: Int -> a -> Balance a -> Balance a
+insert k q Zero = Amount k q
+insert k q (Plain q') =
+    Balance $ IntMap.fromList [ (noCommodity, q'), (k, q) ]
+insert k q (Amount c q') =
+    Balance $ IntMap.fromList [ (c, q'), (k, q) ]
+insert k q (Balance xs) = Balance $ IntMap.insert k q xs
 
 instance K.Indexable Balance where
     index Zero _         = error "Key not in zero Balance"
@@ -118,10 +181,24 @@ instance K.Indexable Balance where
                            else error "Key not in zero Balance"
     index (Balance xs) k = K.index xs k
 
--- instance At (Balance a) where
---   at f k Zero         = const Zero
---   at k f (Amount c q) = undefined
---   at k f (Balance xs) = undefined -- at k (fmap f) xs
+type instance Index (Balance a) = Int
+type instance IxValue (Balance a) = a
+instance Applicative f => Ixed f (Balance a) where
+    ix _k _f Zero = pure Zero
+    ix _k _f pl@(Plain _) = pure pl
+    ix k f amt@(Amount c q)
+        | k == c    = Amount c <$> (Lens.indexed f k q <&> id)
+        | otherwise = pure amt
+    ix k f bal@(Balance xs) = case IntMap.lookup k xs of
+        Just v  -> Balance
+            <$> (Lens.indexed f k v <&> \v' -> IntMap.insert k v' xs)
+        Nothing -> pure bal
+
+instance At (Balance a) where
+    at k f m = Lens.indexed f k mv <&> \r -> case r of
+        Nothing -> maybe m (const (delete k m)) mv
+        Just v' -> insert k v' m
+      where mv = K.lookup k m
 
 instance K.Adjustable Balance where
     adjust _ _ Zero         = Zero
@@ -180,8 +257,7 @@ class Monoid g => Group g where
 instance Num a => Group (Balance a) where
     inverse x = Zero ^-^ x
 
-balanceStore :: K.Indexable f
-             => K.Key f -> f a -> Store (K.Key f) a
+balanceStore :: K.Indexable f => K.Key f -> f a -> Store (K.Key f) a
 balanceStore k x = store (K.index x) k
 
 sum :: Num a => [Balance a] -> Balance a
