@@ -11,6 +11,7 @@ module Ledger.Commodity
        , CommodityInfo(..)
        , defaultCommodityInfo
        , CommodityMap(..)
+       , extendByDigits
        ) where
 
 import           Data.IntMap (IntMap, Key)
@@ -25,6 +26,9 @@ import           Prelude hiding (lookup)
 -- | Commodities are simply indices into a commodity info map, which relates
 --   such commodities to the information known about them.
 type Commodity = Key
+
+extendByDigits :: Int
+extendByDigits = 6
 
 -- | All of the information known about a commodity.
 data CommodityInfo = CommodityInfo

@@ -21,6 +21,8 @@ library
         Ledger.Balance
         Ledger.Commodity
         Ledger.Commodity.History
+        Ledger.Commodity.Parse
+        Ledger.Commodity.Print
     build-depends:
         base                   >= 3 && < 5
       , PSQueue

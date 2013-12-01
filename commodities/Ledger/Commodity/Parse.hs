@@ -1,3 +1,9 @@
-module Data.Commodity.Parse where
+module Ledger.Commodity.Parse where
 
-foo = undefined
+import Control.Monad.Trans.State
+import Data.Text
+import Ledger.Balance
+import Ledger.Commodity
+
+parseAmount :: Text -> State CommodityMap (Balance a)
+parseAmount _str = undefined
