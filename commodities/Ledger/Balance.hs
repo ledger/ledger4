@@ -2,10 +2,14 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Ledger.Balance
     ( Balance(..)
@@ -27,7 +31,7 @@ import           Data.Functor.Bind
 import           Data.IntMap (IntMap)
 import qualified Data.IntMap as IntMap
 import qualified Data.Key as K
-import           Data.Monoid
+import           Data.Semigroup
 import           Data.Traversable
 import           Ledger.Commodity
 import           Linear.Vector
@@ -259,28 +263,28 @@ instance Traversable Balance where
     sequenceA (Amount c x) = fmap (Amount c) x
     sequenceA (Balance xs) = fmap Balance (sequenceA xs)
 
-instance Num a => Monoid (Balance a) where
-    mempty = Zero
+instance Num a => Semigroup (Balance a) where
+    Zero <> x    = x
+    y    <> Zero = y
 
-    mappend Zero x = x
-    mappend y Zero = y
+    Plain qx     <> Plain qy     = Plain $ qx + qy
+    Plain qx     <> Amount cy qy = Amount cy (qx + qy)
+    Amount cx qx <> Plain qy     = Amount cx (qx + qy)
+    Plain qx     <> y            = Amount noCommodity qx `mappend` y
+    x            <> Plain qy     = x `mappend` Amount noCommodity qy
 
-    mappend (Plain qx) (Plain qy) = Plain $ qx + qy
-    mappend (Plain qx) (Amount cy qy) = Amount cy (qx + qy)
-    mappend (Amount cx qx) (Plain qy) = Amount cx (qx + qy)
-    mappend (Plain qx) y = Amount noCommodity qx <> y
-    mappend x (Plain qy) = x <> Amount noCommodity qy
-
-    mappend (Amount cx qx) (Amount cy qy)
+    Amount cx qx <> Amount cy qy
         | cx == cy  = Amount cx (qx + qy)
         | otherwise = Balance (IntMap.fromList [(cx,qx),(cy,qy)])
 
-    mappend (Amount cx qx) (Balance ys) =
-        Balance (IntMap.singleton cx qx <> ys)
-    mappend (Balance xs) (Amount cy qy) =
-        Balance (xs <> IntMap.singleton cy qy)
+    Amount cx qx <> Balance ys   = Balance (IntMap.singleton cx qx <> ys)
+    Balance xs   <> Amount cy qy = Balance (xs <> IntMap.singleton cy qy)
 
-    mappend (Balance xs) (Balance ys) = Balance (xs <> ys)
+    Balance xs <> Balance ys = Balance (xs <> ys)
+
+instance Num a => Monoid (Balance a) where
+    mempty = Zero
+    mappend x y = x <> y
 
 class Monoid g => Group g where
     inverse :: g -> g
