@@ -16,7 +16,7 @@ main = getSources >>= \sources -> doctest $
   : sources
 
 getSources :: IO [FilePath]
-getSources = filter (\x -> ".hs" `isSuffixOf` x) <$> go "src"
+getSources = filter (\x -> ".hs" `isSuffixOf` x) <$> go "Ledger"
   where
     go dir = do
       (dirs, files) <- getFilesAndDirectories dir

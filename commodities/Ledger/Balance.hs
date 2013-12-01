@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -22,7 +23,7 @@ module Ledger.Balance
     ) where
 
 import           Control.Applicative
-import           Control.Comonad.Trans.Store
+import "comonad" Control.Comonad.Trans.Store
 import           Control.Lens hiding (from, to)
 import qualified Control.Lens.Internal as Lens
 import           Control.Monad hiding (forM)
