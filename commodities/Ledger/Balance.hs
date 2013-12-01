@@ -7,7 +7,14 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Ledger.Balance where
+module Ledger.Balance
+    ( Balance(..)
+    , noCommodity
+    , balanceSum
+    , insert
+    , delete
+    , balanceStore
+    ) where
 
 import           Control.Applicative
 import           Control.Comonad.Trans.Store
@@ -16,7 +23,7 @@ import qualified Control.Lens.Internal as Lens
 import           Control.Monad hiding (forM)
 import           Data.Data
 import           Data.Foldable as Foldable
-import           Data.Functor.Bind as Bind
+import           Data.Functor.Bind
 import           Data.IntMap (IntMap)
 import qualified Data.IntMap as IntMap
 import qualified Data.Key as K
@@ -52,7 +59,7 @@ non' = flip anon (const False)
 --     Balance _ * Balance _ = error "Cannot multiply two balances"
 
 --     x - y = x ^-^ y
---     negate x = Zero ^-^ x
+--     negate = negated
 --     abs x = abs <$> x
 --     signum = error "signum not supported on Balance values"
 --     fromInteger = Plain . fromInteger
@@ -157,14 +164,6 @@ instance K.Lookup Balance where
     lookup k (Amount c x) = if k == c then Just x else Nothing
     lookup k (Balance xs) = IntMap.lookup k xs
 
-delete :: Int -> Balance a -> Balance a
-delete _k Zero = Zero
-delete _k pl@(Plain _) = pl
-delete k amt@(Amount c _)
-    | k == c = Zero
-    | otherwise = amt
-delete k (Balance xs) = Balance (IntMap.delete k xs)
-
 insert :: Int -> a -> Balance a -> Balance a
 insert k q Zero = Amount k q
 insert k q (Plain q') =
@@ -172,6 +171,14 @@ insert k q (Plain q') =
 insert k q (Amount c q') =
     Balance $ IntMap.fromList [ (c, q'), (k, q) ]
 insert k q (Balance xs) = Balance $ IntMap.insert k q xs
+
+delete :: Int -> Balance a -> Balance a
+delete _k Zero = Zero
+delete _k pl@(Plain _) = pl
+delete k amt@(Amount c _)
+    | k == c = Zero
+    | otherwise = amt
+delete k (Balance xs) = Balance (IntMap.delete k xs)
 
 instance K.Indexable Balance where
     index Zero _         = error "Key not in zero Balance"
@@ -199,6 +206,30 @@ instance At (Balance a) where
         Nothing -> maybe m (const (delete k m)) mv
         Just v' -> insert k v' m
       where mv = K.lookup k m
+
+instance (Contravariant f, Functor f) => Contains f (Balance a) where
+  contains = containsLookup K.lookup
+  {-# INLINE contains #-}
+
+instance Applicative f => Each f (Balance a) (Balance b) a b where
+  each _ Zero = pure Zero
+  each f (Plain q) = Plain <$> Lens.indexed f noCommodity q
+  each f (Amount c q) = Amount c <$> Lens.indexed f c q
+  each f (Balance m) = sequenceA $ Balance $ IntMap.mapWithKey f' m
+    where f' = Lens.indexed f
+  {-# INLINE each #-}
+
+instance FunctorWithIndex Int Balance where
+  imap = iover itraversed
+  {-# INLINE imap #-}
+
+instance FoldableWithIndex Int Balance where
+  ifoldMap = ifoldMapOf itraversed
+  {-# INLINE ifoldMap #-}
+
+instance TraversableWithIndex Int Balance where
+  itraverse = itraverseOf traversed
+  {-# INLINE itraverse #-}
 
 instance K.Adjustable Balance where
     adjust _ _ Zero         = Zero
@@ -260,5 +291,5 @@ instance Num a => Group (Balance a) where
 balanceStore :: K.Indexable f => K.Key f -> f a -> Store (K.Key f) a
 balanceStore k x = store (K.index x) k
 
-sum :: Num a => [Balance a] -> Balance a
-sum = Foldable.foldr (^+^) Zero
+balanceSum :: Num a => [Balance a] -> Balance a
+balanceSum = Foldable.foldr (^+^) Zero
