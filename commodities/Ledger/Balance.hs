@@ -6,6 +6,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -47,6 +48,8 @@ data Balance a = Zero
                | Amount Commodity a -- ^ A single commoditized amount
                | Balance (IntMap a) -- ^ A vector-space over commodities
                deriving (Eq, Ord, Show, Read, Typeable, Data)
+
+makePrisms ''Balance
 
 non' :: a -> Iso' (Maybe a) a
 non' = flip anon (const False)

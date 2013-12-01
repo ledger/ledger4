@@ -53,23 +53,20 @@ testMap now =
         oneDayAgo  = addUTCTime (-(24 * 3600)) now
 
         usd = (defaultPrimary "USD")
-            { commHistory =
+            & commHistory .~
                    IntMap.fromList [ (2, Map.fromList [(oneHourAgo, 0.75)])
                                    , (3, Map.fromList [(oneDayAgo, 0.66)])
                                    ]
-            }
         cad = (defaultPrimary "CAD")
-            { commHistory =
+            & commHistory .~
                 IntMap.fromList [ (1, Map.fromList [(oneHourAgo, 1.33)])
                                 , (3, Map.fromList [(oneHourAgo, 0.83)])
                                 ]
-            }
         eur = (defaultPrimary "EUR")
-            { commHistory =
+            & commHistory .~
                 IntMap.fromList [ (1, Map.fromList [(oneDayAgo, 1.5)])
                                 , (2, Map.fromList [(oneHourAgo, 1.2)])
                                 ]
-            }
     in CommodityMap $ IntMap.fromList
         [ (1, usd)
         , (2, cad)
@@ -77,12 +74,11 @@ testMap now =
         ]
   where
     defaultPrimary sym = defaultCommodityInfo
-        { commSymbol    = sym
-        , commPrecision = 2
-        , commNoMarket  = True
-        , commKnown     = True
-        , commPrimary   = True
-        }
+        & commSymbol    .~ sym
+        & commPrecision .~ 2
+        & commNoMarket  .~ True
+        & commKnown     .~ True
+        & commPrimary   .~ True
 
 testMap' :: UTCTime -> CommodityMap
 testMap' now =
@@ -103,9 +99,8 @@ testMap' now =
         addConversion 2 3 oneHourAgo (5 % 6)
   where
     defaultPrimary sym = defaultCommodityInfo
-        { commSymbol    = sym
-        , commPrecision = 2
-        , commNoMarket  = True
-        , commKnown     = True
-        , commPrimary   = True
-        }
+        & commSymbol    .~ sym
+        & commPrecision .~ 2
+        & commNoMarket  .~ True
+        & commKnown     .~ True
+        & commPrimary   .~ True

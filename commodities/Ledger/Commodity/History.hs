@@ -16,6 +16,7 @@ module Ledger.Commodity.History
        ) where
 
 import           Control.Applicative
+import           Control.Lens
 import           Control.Monad hiding (forM)
 import           Control.Monad.Trans.State
 import           Data.Functor.Identity
@@ -142,10 +143,10 @@ findConversion :: Commodity     -- ^ Source commodity
                -> UTCTime       -- ^ Look for conversions on or before this
                -> CommodityMap  -- ^ Set of commodities to search
                -> Maybe (UTCTime, Rational)
-findConversion from to time cm =
+findConversion f t time cm =
     let (keyPath, valuesMap) =
             flip runState IntMap.empty $
-                intAStarM g h (return . (== to)) (return from)
+                intAStarM g h (return . (== t)) (return f)
     in go valuesMap <$> keyPath
   where
     g c = do
@@ -154,35 +155,32 @@ findConversion from to time cm =
                 (\(!m', !sm') k cs ->
                   case Map.lookupLE time cs of
                       Nothing    -> (m', sm')
-                      Just (t,r) ->
-                          (IntMap.insert k (diffUTCTime time t) m',
-                           IntMap.insert k (t, r) sm'))
+                      Just (u,r) ->
+                          (IntMap.insert k (diffUTCTime time u) m',
+                           IntMap.insert k (u, r) sm'))
                 (IntMap.empty, IntMap.empty)
-                (commHistory $ commodities cm IntMap.! c)
+                (cm ^. commodities.ix c.commHistory)
         put $! IntMap.insert c sm vm
         return m
 
     h _goal = return 0
 
-    go vm ks = (\(!x, !y, _) -> (x, y)) $ foldl' f (time, 1, from) ks
+    go vm ks = (\(!x, !y, _) -> (x, y)) $ foldl' h (time, 1, f) ks
       where
-        f (!w, !r, !s) t = let (w', r') = vm IntMap.! s IntMap.! t
-                           in (min w w', r / r', t)
+        h (!w, !r, !s) u = let (w', r') = vm IntMap.! s IntMap.! u
+                           in (min w w', r / r', u)
 
 -- | Add a price conversion in the form of a ratio between two commodities at
 --   a specific point in time.
 addConversion :: Commodity -> Commodity -> UTCTime -> Rational
               -> State CommodityMap ()
-addConversion from to time ratio =
-    modify $ \(commodities -> cm) ->
-        CommodityMap $ update (1/ratio) to from $ update ratio from to cm
+addConversion f t time ratio = do
+    commodities.at t %= fmap (addconv (1/ratio) ?? f)
+    commodities.at f %= fmap (addconv ratio ?? t)
   where
-    update r s t = IntMap.adjust (flip (addconv r) t) s
-
     addconv r s t =
-        let c  = commHistory s
-            mm = IntMap.lookup t c
-            rm = case mm of
+        let c  = s^.commHistory
+            rm = case IntMap.lookup t c of
                 Nothing -> Map.singleton time r
                 Just m  -> Map.insert time r m
-        in s { commHistory = IntMap.insert t rm c }
+        in s & commHistory .~ IntMap.insert t rm c
