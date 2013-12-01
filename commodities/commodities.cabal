@@ -1,5 +1,5 @@
 Name:          commodities
-Version:       0.1.0.0
+Version:       0.0.1
 Synopsis:      Library for working with commoditized amounts and price histories
 Description:   Library for working with commoditized amounts and price histories
 License-file:  LICENSE
@@ -7,12 +7,12 @@ License:       BSD3
 Author:        John Wiegley
 Maintainer:    johnw@newartisans.com
 Build-Type:    Simple
-Cabal-Version: >=1.10
+Cabal-Version: >= 1.10
 Category:      Finance
 
 source-repository head
     type:     git
-    location: git://github.com/ledger/commodities.git
+    location: git://github.com/ledger/ledger4.git
 
 library
     default-language: Haskell98
