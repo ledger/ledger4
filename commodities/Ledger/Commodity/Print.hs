@@ -2,6 +2,7 @@
 {-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PackageImports #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Ledger.Commodity.Print
@@ -79,7 +80,11 @@ buildBalance (Balance xs) =
 buildBalance _ = return ()
 
 balance :: a ~ Rational => CommodityMap -> Iso' (Balance a) Text
-balance pool = iso toBalance fromBalance
+balance pool = iso fromBalance toBalance
   where
-    toBalance   = flip runReader pool . printBalance
-    fromBalance = flip evalState pool . parseBalance
+    toBalance str = flip evalState pool $ do
+        eb <- parseBalance str
+        return $ case eb of
+            Left (_ :: BalanceError) -> Zero
+            Right b -> b
+    fromBalance = flip runReader pool . printBalance

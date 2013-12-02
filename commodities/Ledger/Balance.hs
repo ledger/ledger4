@@ -20,10 +20,12 @@ module Ledger.Balance
     , insert
     , delete
     , balanceStore
+    , BalanceError(..)
     ) where
 
 import           Control.Applicative
 import "comonad" Control.Comonad.Trans.Store
+import           Control.Exception
 import           Control.Lens hiding (from, to)
 import qualified Control.Lens.Internal as Lens
 import           Control.Monad hiding (forM)
@@ -34,6 +36,7 @@ import           Data.IntMap (IntMap)
 import qualified Data.IntMap as IntMap
 import qualified Data.Key as K
 import           Data.Semigroup
+import           Data.Text (Text)
 import           Data.Traversable
 import           Ledger.Commodity
 import           Linear.Vector
@@ -301,3 +304,8 @@ balanceStore k x = store (K.index x) k
 
 balanceSum :: Num a => [Balance a] -> Balance a
 balanceSum = Foldable.foldr (^+^) Zero
+
+data BalanceError = BalanceParseError Text
+    deriving (Show, Typeable)
+
+instance Exception BalanceError
