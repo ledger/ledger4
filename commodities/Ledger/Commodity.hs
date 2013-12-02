@@ -10,7 +10,7 @@
 module Ledger.Commodity
        ( Commodity
        , CommodityInfo(..), HasCommodityInfo(..)
-       , defaultCommodityInfo
+       , defaultCommodityInfo, defaultPrimaryCommodityInfo
        , CommodityMap(..), HasCommodityMap(..)
        , extendByDigits
        ) where
@@ -57,7 +57,7 @@ defaultCommodityInfo = CommodityInfo
     { _commSymbol       = ""
     , _commPrecision    = 0
     , _commSuffixed     = False
-    , _commSeparated    = False
+    , _commSeparated    = True
     , _commThousands    = True
     , _commDecimalComma = False
     , _commNoMarket     = False
@@ -66,6 +66,14 @@ defaultCommodityInfo = CommodityInfo
     , _commPrimary      = False
     , _commHistory      = IntMap.empty
     }
+
+defaultPrimaryCommodityInfo :: Text -> CommodityInfo
+defaultPrimaryCommodityInfo sym = defaultCommodityInfo
+    & commSymbol    .~ sym
+    & commPrecision .~ 2
+    & commNoMarket  .~ True
+    & commKnown     .~ True
+    & commPrimary   .~ True
 
 -- | A commodities map, relating commodity indices to information about
 --   those commodities.

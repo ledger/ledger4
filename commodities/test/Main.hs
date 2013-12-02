@@ -52,17 +52,17 @@ testMap now =
     let oneHourAgo = addUTCTime (-3600) now
         oneDayAgo  = addUTCTime (-(24 * 3600)) now
 
-        usd = (defaultPrimary "USD")
+        usd = (defaultPrimaryCommodityInfo "USD")
             & commHistory .~
                    IntMap.fromList [ (2, Map.fromList [(oneHourAgo, 0.75)])
                                    , (3, Map.fromList [(oneDayAgo, 0.66)])
                                    ]
-        cad = (defaultPrimary "CAD")
+        cad = (defaultPrimaryCommodityInfo "CAD")
             & commHistory .~
                 IntMap.fromList [ (1, Map.fromList [(oneHourAgo, 1.33)])
                                 , (3, Map.fromList [(oneHourAgo, 0.83)])
                                 ]
-        eur = (defaultPrimary "EUR")
+        eur = (defaultPrimaryCommodityInfo "EUR")
             & commHistory .~
                 IntMap.fromList [ (1, Map.fromList [(oneDayAgo, 1.5)])
                                 , (2, Map.fromList [(oneHourAgo, 1.2)])
@@ -72,19 +72,12 @@ testMap now =
         , (2, cad)
         , (3, eur)
         ]
-  where
-    defaultPrimary sym = defaultCommodityInfo
-        & commSymbol    .~ sym
-        & commPrecision .~ 2
-        & commNoMarket  .~ True
-        & commKnown     .~ True
-        & commPrimary   .~ True
 
 testMap' :: UTCTime -> CommodityMap
 testMap' now =
-    let usd = defaultPrimary "USD"
-        cad = defaultPrimary "CAD"
-        eur = defaultPrimary "EUR"
+    let usd = defaultPrimaryCommodityInfo "USD"
+        cad = defaultPrimaryCommodityInfo "CAD"
+        eur = defaultPrimaryCommodityInfo "EUR"
 
         cm = CommodityMap $ IntMap.fromList
             [ (1, usd)
@@ -97,10 +90,3 @@ testMap' now =
         addConversion 1 2 oneHourAgo (3 % 4)
         addConversion 1 3 oneDayAgo  (2 % 3)
         addConversion 2 3 oneHourAgo (5 % 6)
-  where
-    defaultPrimary sym = defaultCommodityInfo
-        & commSymbol    .~ sym
-        & commPrecision .~ 2
-        & commNoMarket  .~ True
-        & commKnown     .~ True
-        & commPrimary   .~ True
