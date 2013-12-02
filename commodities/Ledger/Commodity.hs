@@ -49,6 +49,24 @@ data CommodityInfo = CommodityInfo
 
 makeClassy ''CommodityInfo
 
+instance Semigroup CommodityInfo where
+    x <> y = x
+        & commSymbol       .~ y^.commSymbol
+        & commPrecision    .~ max (x^.commPrecision) (y^.commPrecision)
+        & commSuffixed     .~ (x^.commSuffixed     || y^.commSuffixed)
+        & commSeparated    .~ (x^.commSeparated    || y^.commSeparated)
+        & commThousands    .~ (x^.commThousands    || y^.commThousands)
+        & commDecimalComma .~ (x^.commDecimalComma || y^.commDecimalComma)
+        & commNoMarket     .~ (x^.commNoMarket     || y^.commNoMarket)
+        & commBuiltin      .~ (x^.commBuiltin      || y^.commBuiltin)
+        & commKnown        .~ (x^.commKnown        || y^.commKnown)
+        & commPrimary      .~ (x^.commPrimary      || y^.commPrimary)
+        & commHistory      .~ (x^.commHistory <> y^.commHistory)
+
+instance Monoid CommodityInfo where
+    mempty = defaultCommodityInfo
+    x `mappend` y = x <> y
+
 -- | Return a 'CommodityInfo' with defaults selected for all fields.  It is
 --   intended that at least one field of the result will be modified
 --   immediately.
@@ -85,7 +103,8 @@ data CommodityMap = CommodityMap
 makeClassy ''CommodityMap
 
 instance Semigroup CommodityMap where
-    CommodityMap x <> CommodityMap y = CommodityMap (x <> y)
+    CommodityMap x <> CommodityMap y =
+        CommodityMap (IntMap.unionWith (<>) x y)
 
 instance Monoid CommodityMap where
     mempty = CommodityMap mempty

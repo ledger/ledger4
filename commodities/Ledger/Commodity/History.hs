@@ -6,7 +6,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ViewPatterns #-}
 
 module Ledger.Commodity.History
        ( findConversion
@@ -165,9 +164,9 @@ findConversion f t time cm =
 
     h _goal = return 0
 
-    go vm ks = (\(!x, !y, _) -> (x, y)) $ foldl' h (time, 1, f) ks
+    go vm ks = (\(!x, !y, _) -> (x, y)) $ foldl' o (time, 1, f) ks
       where
-        h (!w, !r, !s) u = let (w', r') = vm IntMap.! s IntMap.! u
+        o (!w, !r, !s) u = let (w', r') = vm IntMap.! s IntMap.! u
                            in (min w w', r / r', u)
 
 -- | Add a price conversion in the form of a ratio between two commodities at
@@ -178,9 +177,9 @@ addConversion f t time ratio = do
     commodities.at t %= fmap (addconv (1/ratio) ?? f)
     commodities.at f %= fmap (addconv ratio ?? t)
   where
-    addconv r s t =
+    addconv r s t' =
         let c  = s^.commHistory
-            rm = case IntMap.lookup t c of
+            rm = case IntMap.lookup t' c of
                 Nothing -> Map.singleton time r
                 Just m  -> Map.insert time r m
-        in s & commHistory .~ IntMap.insert t rm c
+        in s & commHistory .~ IntMap.insert t' rm c
