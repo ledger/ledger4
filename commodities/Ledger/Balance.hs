@@ -55,8 +55,8 @@ data Balance a = Zero
 
 makePrisms ''Balance
 
-non' :: a -> Iso' (Maybe a) a
-non' = flip anon (const False)
+non'' :: a -> Iso' (Maybe a) a
+non'' = flip anon (const False)
 
 -- instance Num a => Num (Balance a) where
 --     x + y = x ^+^ y
@@ -90,8 +90,8 @@ instance Additive Balance where
     Amount cx qx ^+^ Amount cy qy
         | cx == cy  = Amount cx (qx + qy)
         | otherwise = Balance $ IntMap.fromList [(cx,qx), (cy,qy)]
-    Amount cx qx ^+^ Balance ys = Balance $ ys & at cx.non' 0 +~ qx
-    Balance xs ^+^ Amount cy qy = Balance $ xs & at cy.non' 0 +~ qy
+    Amount cx qx ^+^ Balance ys = Balance $ ys & at cx.non'' 0 +~ qx
+    Balance xs ^+^ Amount cy qy = Balance $ xs & at cy.non'' 0 +~ qy
 
     Balance xs ^+^ Balance ys = Balance $ xs ^+^ ys
     {-# INLINE (^+^) #-}
@@ -201,34 +201,34 @@ instance K.Indexable Balance where
 
 type instance Index (Balance a) = Int
 type instance IxValue (Balance a) = a
-instance Applicative f => Ixed f (Balance a) where
-    ix _k _f Zero = pure Zero
-    ix _k _f pl@(Plain _) = pure pl
-    ix k f amt@(Amount c q)
-        | k == c    = Amount c <$> (Lens.indexed f k q <&> id)
-        | otherwise = pure amt
-    ix k f bal@(Balance xs) = case IntMap.lookup k xs of
-        Just v  -> Balance
-            <$> (Lens.indexed f k v <&> \v' -> IntMap.insert k v' xs)
-        Nothing -> pure bal
+-- instance Applicative f => Ixed f (Balance a) where
+--     ix _k _f Zero = pure Zero
+--     ix _k _f pl@(Plain _) = pure pl
+--     ix k f amt@(Amount c q)
+--         | k == c    = Amount c <$> (Lens.indexed f k q <&> id)
+--         | otherwise = pure amt
+--     ix k f bal@(Balance xs) = case IntMap.lookup k xs of
+--         Just v  -> Balance
+--             <$> (Lens.indexed f k v <&> \v' -> IntMap.insert k v' xs)
+--         Nothing -> pure bal
 
-instance At (Balance a) where
-    at k f m = Lens.indexed f k mv <&> \r -> case r of
-        Nothing -> maybe m (const (delete k m)) mv
-        Just v' -> insert k v' m
-      where mv = K.lookup k m
+-- instance At (Balance a) where
+--     at k f m = Lens.indexed f k mv <&> \r -> case r of
+--         Nothing -> maybe m (const (delete k m)) mv
+--         Just v' -> insert k v' m
+--       where mv = K.lookup k m
 
-instance (Contravariant f, Functor f) => Contains f (Balance a) where
-  contains = containsLookup K.lookup
-  {-# INLINE contains #-}
+-- instance (Contravariant f, Functor f) => Contains f (Balance a) where
+--   contains = containsLookup K.lookup
+--   {-# INLINE contains #-}
 
-instance Applicative f => Each f (Balance a) (Balance b) a b where
-  each _ Zero = pure Zero
-  each f (Plain q) = Plain <$> Lens.indexed f noCommodity q
-  each f (Amount c q) = Amount c <$> Lens.indexed f c q
-  each f (Balance m) = sequenceA $ Balance $ IntMap.mapWithKey f' m
-    where f' = Lens.indexed f
-  {-# INLINE each #-}
+-- instance Applicative f => Each f (Balance a) (Balance b) a b where
+--   each _ Zero = pure Zero
+--   each f (Plain q) = Plain <$> Lens.indexed f noCommodity q
+--   each f (Amount c q) = Amount c <$> Lens.indexed f c q
+--   each f (Balance m) = sequenceA $ Balance $ IntMap.mapWithKey f' m
+--     where f' = Lens.indexed f
+--   {-# INLINE each #-}
 
 instance FunctorWithIndex Int Balance where
   imap = iover itraversed
