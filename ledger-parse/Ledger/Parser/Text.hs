@@ -20,6 +20,7 @@ import qualified Data.Text.Encoding as E
 import           Filesystem.Path.CurrentOS hiding (concat)
 import           Prelude hiding (FilePath, readFile, until)
 import           Text.Parser.Combinators
+import           Text.Parser.LookAhead
 import           Text.Parser.Token
 import           Text.Trifecta
 import           Text.Trifecta.Delta
@@ -85,14 +86,14 @@ txnDateParser = some (digit <|> oneOf "/-." <|> letter)
 longSep :: CharParsing m => m ()
 longSep = () <$ (try (char ' ' *> char ' ') <|> tab)
 
-noteParser :: CharParsing m => m String
+noteParser :: (LookAheadParsing m, CharParsing m) => m String
 noteParser = char ';' *> manyTill anyChar (try (lookAhead endOfLine))
              <?> "note"
 
-longSepOrEOL :: CharParsing m => m ()
+longSepOrEOL :: (LookAheadParsing m, CharParsing m) => m ()
 longSepOrEOL = try (lookAhead (longSep <|> endOfLine))
 
-longSepOrEOLIf :: CharParsing m => m p -> m ()
+longSepOrEOLIf :: (LookAheadParsing m, CharParsing m) => m p -> m ()
 longSepOrEOLIf p = try (lookAhead ((() <$ longSep <* p) <|> endOfLine))
 
 until :: CharParsing m => m () -> m String
@@ -101,7 +102,7 @@ until end = (:) <$> noneOf "\r\n" <*> manyTill anyChar end
 tokenP :: TokenParsing m => m p -> m p
 tokenP p = p <* skipMany spaceChars
 
-postingParser :: TokenParsing m => m RawPosting
+postingParser :: (LookAheadParsing m, TokenParsing m) => m RawPosting
 postingParser =
   (RawPosting <$!> (some spaceChars *>
                    optional (tokenP (char '*' <|> char '!')))
@@ -118,7 +119,7 @@ postingParser =
 spaceChars :: CharParsing m => m ()
 spaceChars = () <$ oneOf " \t"
 
-regularTxnParser :: TokenParsing m => m RawEntity
+regularTxnParser :: (LookAheadParsing m, TokenParsing m) => m RawEntity
 regularTxnParser = RawTransactionEntity <$!> go
   where go = RawTransaction
              <$!> txnDateParser
@@ -132,7 +133,7 @@ regularTxnParser = RawTransactionEntity <$!> go
              <*> (endOfLine *> some postingParser)
              <?> "regular transaction"
 
-automatedTxnParser :: TokenParsing m => m RawEntity
+automatedTxnParser :: (LookAheadParsing m, TokenParsing m) => m RawEntity
 automatedTxnParser = RawAutoTxnEntity <$!> go
   where go = RawAutoTxn
              <$!> (tokenP (char '=') *>
@@ -140,7 +141,7 @@ automatedTxnParser = RawAutoTxnEntity <$!> go
              <*> (endOfLine *> some postingParser)
              <?> "automated transaction"
 
-periodicTxnParser :: TokenParsing m => m RawEntity
+periodicTxnParser :: (LookAheadParsing m, TokenParsing m) => m RawEntity
 periodicTxnParser = RawPeriodTxnEntity <$!> go
   where go = RawPeriodTxn
              <$!> (tokenP (char '~') *>
@@ -148,13 +149,13 @@ periodicTxnParser = RawPeriodTxnEntity <$!> go
              <*> (endOfLine *> some postingParser)
              <?> "periodic transaction"
 
-transactionParser :: TokenParsing m => m RawEntity
+transactionParser :: (LookAheadParsing m, TokenParsing m) => m RawEntity
 transactionParser = regularTxnParser
                     <|> automatedTxnParser
                     <|> periodicTxnParser
                     <?> "transaction"
 
-directiveParser :: TokenParsing m => m RawEntity
+directiveParser :: (LookAheadParsing m, TokenParsing m) => m RawEntity
 directiveParser =
   Directive <$!> optional (oneOf "@!")
             <*> ((:) <$!> letter <*> tokenP (many alphaNum))
@@ -170,7 +171,7 @@ endOfLine = () <$ endOfLineChar
 endOfLineChar :: CharParsing m => m Char
 endOfLineChar = skipOptional (char '\r') *> char '\n'
 
-commentParser :: TokenParsing m => m RawEntity
+commentParser :: (LookAheadParsing m, TokenParsing m) => m RawEntity
 commentParser = FileComment
                 <$!> (concat <$!>
                       some ((++) <$!> noteParser
@@ -180,7 +181,7 @@ commentParser = FileComment
 whitespaceParser :: TokenParsing m => m RawEntity
 whitespaceParser = Whitespace <$!> some space <?> "whitespace"
 
-entityParser :: TokenParsing m => m RawEntity
+entityParser :: (LookAheadParsing m, TokenParsing m) => m RawEntity
 entityParser = directiveParser
                <|> commentParser
                <|> whitespaceParser
@@ -190,7 +191,7 @@ entityParser = directiveParser
 rendCaret :: DeltaParsing m => m Rendering
 rendCaret = addCaret <$!> position <*> rend
 
-journalParser :: DeltaParsing m => m [RawEntityInSitu]
+journalParser :: (LookAheadParsing m, DeltaParsing m) => m [RawEntityInSitu]
 journalParser =
   many (RawEntityInSitu <$!> pure 0 <*> rendCaret <*> entityParser <*> rendCaret)
 
